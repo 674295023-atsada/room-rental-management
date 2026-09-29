@@ -10,6 +10,7 @@ import { MaintenanceView } from './components/MaintenanceView';
 import { DatabaseView } from './components/DatabaseView';
 import { DeploymentGuideView } from './components/DeploymentGuideView';
 import { GoogleAuthModal } from './components/GoogleAuthModal';
+import { LoginPage } from './components/LoginPage';
 
 import { Room, LeaseContract, MeterReading, Invoice, MaintenanceTicket, User } from './types';
 import { StorageService, SystemRates } from './services/storage';
@@ -30,6 +31,7 @@ export const App: React.FC = () => {
 
   // Attempt to sync from Cloudflare D1 database if online
   useEffect(() => {
+    if (!currentUser) return;
     const syncFromD1 = async () => {
       try {
         const res = await fetch('/api/data');
@@ -44,7 +46,7 @@ export const App: React.FC = () => {
       }
     };
     syncFromD1();
-  }, []);
+  }, [currentUser]);
 
   const handleUpdateRooms = (updatedRooms: Room[]) => {
     setRooms(updatedRooms);
@@ -86,6 +88,18 @@ export const App: React.FC = () => {
     setCurrentUser(user);
   };
 
+  const handleLogout = () => {
+    if (confirm('ต้องการออกจากระบบใช่หรือไม่?')) {
+      AuthService.logout();
+      setCurrentUser(null);
+    }
+  };
+
+  // If user is not authenticated with Google, show the Login Page
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   const pendingInvoicesCount = invoices.filter(i => i.status === 'AWAITING_APPROVAL').length;
   const openTicketsCount = tickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
 
@@ -94,6 +108,7 @@ export const App: React.FC = () => {
       <Navbar 
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
         onDataReset={handleResetData} 
       />
 

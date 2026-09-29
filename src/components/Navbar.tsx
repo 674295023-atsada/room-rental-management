@@ -5,10 +5,11 @@ import { User } from '../types';
 interface NavbarProps {
   currentUser: User | null;
   onOpenAuthModal: () => void;
+  onLogout: () => void;
   onDataReset: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentUser, onOpenAuthModal, onDataReset }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentUser, onOpenAuthModal, onLogout, onDataReset }) => {
   const currentDate = new Intl.DateTimeFormat('th-TH', {
     dateStyle: 'full',
   }).format(new Date());
@@ -87,6 +88,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onOpenAuthModal, on
           >
             <LogIn className="w-3.5 h-3.5" />
             <span>เข้าสู่ระบบ Google</span>
+          </button>
+        )}
+
+        {currentUser && (
+          <button
+            onClick={onLogout}
+            title="ออกจากระบบ"
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
+          >
+            <LogIn className="w-4 h-4 rotate-180" />
           </button>
         )}
       </div>
