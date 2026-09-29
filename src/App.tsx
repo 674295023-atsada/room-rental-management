@@ -10,14 +10,20 @@ import { MaintenanceView } from './components/MaintenanceView';
 import { DatabaseView } from './components/DatabaseView';
 import { DeploymentGuideView } from './components/DeploymentGuideView';
 import { LoginPage } from './components/LoginPage';
+import { TenantPortalView } from './components/TenantPortalView';
 
 import { Room, LeaseContract, MeterReading, Invoice, MaintenanceTicket, User } from './types';
 import { StorageService, SystemRates } from './services/storage';
 import { AuthService } from './services/auth';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(() => AuthService.getCurrentUser());
+  const isAdmin = currentUser?.role === 'ADMIN';
+
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const user = AuthService.getCurrentUser();
+    return user?.role === 'ADMIN' ? 'dashboard' : 'tenant-portal';
+  });
 
   // Application Data States
   const [rooms, setRooms] = useState<Room[]>(() => StorageService.getRooms());
@@ -84,6 +90,7 @@ export const App: React.FC = () => {
 
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
+    setActiveTab(user.role === 'ADMIN' ? 'dashboard' : 'tenant-portal');
   };
 
   const handleLogout = () => {
@@ -111,6 +118,7 @@ export const App: React.FC = () => {
 
       <div className="flex flex-1">
         <Sidebar
+          currentUser={currentUser}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           counts={{
@@ -120,68 +128,84 @@ export const App: React.FC = () => {
         />
 
         <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">
-          {activeTab === 'dashboard' && (
-            <DashboardView
+          {/* TENANT VIEW: If not admin, always render TenantPortalView */}
+          {!isAdmin ? (
+            <TenantPortalView
+              currentUser={currentUser}
               rooms={rooms}
               invoices={invoices}
               tickets={tickets}
               leases={leases}
-              setActiveTab={setActiveTab}
-            />
-          )}
-
-          {activeTab === 'rooms' && (
-            <RoomManagementView
-              rooms={rooms}
-              onUpdateRooms={handleUpdateRooms}
-            />
-          )}
-
-          {activeTab === 'leases' && (
-            <LeaseManagementView
-              leases={leases}
-              rooms={rooms}
-              onUpdateLeases={handleUpdateLeases}
-              onUpdateRooms={handleUpdateRooms}
-            />
-          )}
-
-          {activeTab === 'meters' && (
-            <MeterBillingView
-              rooms={rooms}
-              meters={meters}
-              rates={rates}
-              invoices={invoices}
-              onUpdateMeters={handleUpdateMeters}
               onUpdateInvoices={handleUpdateInvoices}
-              onUpdateRates={handleUpdateRates}
-              onNavigateToInvoices={() => setActiveTab('invoices')}
-            />
-          )}
-
-          {activeTab === 'invoices' && (
-            <InvoicePaymentView
-              invoices={invoices}
-              onUpdateInvoices={handleUpdateInvoices}
-            />
-          )}
-
-          {activeTab === 'maintenance' && (
-            <MaintenanceView
-              tickets={tickets}
-              rooms={rooms}
               onUpdateTickets={handleUpdateTickets}
             />
-          )}
+          ) : (
+            /* ADMIN VIEWS */
+            <>
+              {activeTab === 'dashboard' && (
+                <DashboardView
+                  rooms={rooms}
+                  invoices={invoices}
+                  tickets={tickets}
+                  leases={leases}
+                  setActiveTab={setActiveTab}
+                />
+              )}
 
-          {activeTab === 'database' && (
-            <DatabaseView
-              currentUser={currentUser}
-            />
-          )}
+              {activeTab === 'rooms' && (
+                <RoomManagementView
+                  rooms={rooms}
+                  onUpdateRooms={handleUpdateRooms}
+                />
+              )}
 
-          {activeTab === 'deployment' && (
-            <DeploymentGuideView />
+              {activeTab === 'leases' && (
+                <LeaseManagementView
+                  leases={leases}
+                  rooms={rooms}
+                  onUpdateLeases={handleUpdateLeases}
+                  onUpdateRooms={handleUpdateRooms}
+                />
+              )}
+
+              {activeTab === 'meters' && (
+                <MeterBillingView
+                  rooms={rooms}
+                  meters={meters}
+                  rates={rates}
+                  invoices={invoices}
+                  onUpdateMeters={handleUpdateMeters}
+                  onUpdateInvoices={handleUpdateInvoices}
+                  onUpdateRates={handleUpdateRates}
+                  onNavigateToInvoices={() => setActiveTab('invoices')}
+                />
+              )}
+
+              {activeTab === 'invoices' && (
+                <InvoicePaymentView
+                  invoices={invoices}
+                  onUpdateInvoices={handleUpdateInvoices}
+                />
+              )}
+
+              {activeTab === 'maintenance' && (
+                <MaintenanceView
+                  tickets={tickets}
+                  rooms={rooms}
+                  onUpdateTickets={handleUpdateTickets}
+                />
+              )}
+
+              {activeTab === 'database' && (
+                <DatabaseView
+                  currentUser={currentUser}
+                />
+              )}
+
+              {activeTab === 'deployment' && (
+                <DeploymentGuideView />
+              )}
+            </>
           )}
         </main>
       </div>
