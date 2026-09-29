@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, LogIn, CheckCircle2, X, Lock, Sparkles, UserCheck } from 'lucide-react';
 import { User } from '../types';
-import { AuthService, DEFAULT_ADMIN_USER } from '../services/auth';
+import { AuthService, DEFAULT_ADMIN_USER, SKRU_ADMIN_USER } from '../services/auth';
 
 interface GoogleAuthModalProps {
   isOpen: boolean;
@@ -20,11 +20,9 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
   const [customName, setCustomName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Initialize Google Identity Services script if present
   useEffect(() => {
     if (!isOpen) return;
 
-    // Load Google GSI script dynamically if not already loaded
     if (!document.getElementById('google-gsi-client')) {
       const script = document.createElement('script');
       script.id = 'google-gsi-client';
@@ -37,12 +35,13 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleLoginAsSeree = async () => {
+  const handleLoginAsAdmin = async (adminType: 'seree' | 'skru') => {
     setIsProcessing(true);
+    const target = adminType === 'seree' ? DEFAULT_ADMIN_USER : SKRU_ADMIN_USER;
     const user = await AuthService.loginWithGoogle({
-      email: 'seree999@gmail.com',
-      name: 'อาจารย์เสรี ชะนะ (ผู้ดูแลระบบ)',
-      picture: DEFAULT_ADMIN_USER.avatarUrl
+      email: target.email,
+      name: target.name,
+      picture: target.avatarUrl
     });
     setIsProcessing(false);
     onLoginSuccess(user);
@@ -98,25 +97,39 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
           <p className="text-xs text-slate-500 mt-1">Google OAuth 2.0 & Role Authorization</p>
         </div>
 
-        {/* Highlighted Admin Button for Seree */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-4 mb-5 text-left">
-          <div className="flex items-center gap-2 mb-2">
+        {/* Highlighted Admin Buttons */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-4 mb-5 text-left space-y-2.5">
+          <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
-            <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">สิทธิ์ผู้ดูแลระบบสูงสุด (Admin)</span>
+            <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">สิทธิ์ผู้ดูแลระบบ (Admin) ในระบบ D1</span>
           </div>
 
-          <p className="text-xs text-slate-600 mb-3">
-            บัญชี <span className="font-bold text-blue-700">seree999@gmail.com</span> ได้รับสิทธิ์เป็น 
-            <span className="font-semibold text-emerald-700"> ผู้ดูแลระบบ (Super Admin)</span> ในฐานข้อมูล Cloudflare D1
+          <p className="text-xs text-slate-600 mb-2">
+            บัญชีที่ได้รับสิทธิ์เป็น <span className="font-semibold text-emerald-700">ผู้ดูแลระบบ (Super Admin)</span>:
           </p>
 
           <button
-            onClick={handleLoginAsSeree}
+            onClick={() => handleLoginAsAdmin('seree')}
             disabled={isProcessing}
-            className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition transform active:scale-95"
+            className="w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition"
           >
-            <UserCheck className="w-4 h-4" />
-            <span>เข้าสู่ระบบเป็น seree999@gmail.com (ผู้ดูแลระบบ)</span>
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-blue-200" />
+              <span>seree999@gmail.com</span>
+            </div>
+            <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full">Admin</span>
+          </button>
+
+          <button
+            onClick={() => handleLoginAsAdmin('skru')}
+            disabled={isProcessing}
+            className="w-full flex items-center justify-between py-2.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition"
+          >
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-indigo-200" />
+              <span>674295023@parichat.skru.ac.th</span>
+            </div>
+            <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full">Admin</span>
           </button>
         </div>
 

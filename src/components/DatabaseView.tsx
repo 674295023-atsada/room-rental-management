@@ -95,14 +95,18 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ currentUser }) => {
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">ผู้ดูแลระบบสูงสุด (D1 Admin)</span>
+            <span className="text-xs font-semibold text-slate-500">ผู้ดูแลระบบสูงสุด (D1 Admins)</span>
             <Shield className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="mt-3">
-            <span className="text-sm font-bold text-blue-700 block">seree999@gmail.com</span>
-            <span className="inline-block text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full mt-0.5">
-              👑 ผู้ดูแลระบบ (Super Admin)
-            </span>
+          <div className="mt-3 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-blue-700">seree999@gmail.com</span>
+              <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Admin</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-700">674295023@parichat.skru.ac.th</span>
+              <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Admin</span>
+            </div>
           </div>
         </div>
       </div>

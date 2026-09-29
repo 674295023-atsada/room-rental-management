@@ -2,7 +2,10 @@ interface Env {
   DB: D1Database;
 }
 
-const ADMIN_EMAILS = ['seree999@gmail.com'];
+const ADMIN_EMAILS = [
+  'seree999@gmail.com',
+  '674295023@parichat.skru.ac.th'
+];
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
@@ -52,7 +55,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       ON CONFLICT(email) DO UPDATE SET
         name = excluded.name,
         avatar_url = excluded.avatar_url,
-        role = CASE WHEN excluded.email = 'seree999@gmail.com' THEN 'ADMIN' ELSE users.role END,
+        role = CASE WHEN LOWER(excluded.email) IN ('seree999@gmail.com', '674295023@parichat.skru.ac.th') THEN 'ADMIN' ELSE users.role END,
         updated_at = CURRENT_TIMESTAMP
     `).bind(userId, email, name || email, picture, role).run();
 
