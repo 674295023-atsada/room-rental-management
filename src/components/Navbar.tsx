@@ -1,20 +1,19 @@
 import React from 'react';
-import { Building2, Bell, RefreshCw, LogIn, Shield, Database, User as UserIcon } from 'lucide-react';
+import { Building2, RefreshCw, LogOut, Database, User as UserIcon } from 'lucide-react';
 import { User } from '../types';
 
 interface NavbarProps {
   currentUser: User | null;
-  onOpenAuthModal: () => void;
   onLogout: () => void;
   onDataReset: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentUser, onOpenAuthModal, onLogout, onDataReset }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentUser, onLogout, onDataReset }) => {
   const currentDate = new Intl.DateTimeFormat('th-TH', {
     dateStyle: 'full',
   }).format(new Date());
 
-  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.email.toLowerCase() === 'seree999@gmail.com';
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
@@ -48,12 +47,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onOpenAuthModal, on
           <span>รีเซ็ต Mock</span>
         </button>
 
-        {/* User Profile / Google OAuth Button */}
-        {currentUser ? (
-          <div 
-            onClick={onOpenAuthModal}
-            className="flex items-center gap-2.5 pl-3 border-l border-slate-200 cursor-pointer group"
-          >
+        {/* User Profile */}
+        {currentUser && (
+          <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
             {currentUser.avatarUrl ? (
               <img
                 src={currentUser.avatarUrl}
@@ -67,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onOpenAuthModal, on
             )}
             <div className="text-left">
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition truncate max-w-[130px]">
+                <p className="text-xs font-bold text-slate-800 truncate max-w-[140px]">
                   {currentUser.name}
                 </p>
                 {isAdmin && (
@@ -76,29 +72,20 @@ export const Navbar: React.FC<NavbarProps> = ({ currentUser, onOpenAuthModal, on
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 font-mono truncate max-w-[130px]">
+              <p className="text-[11px] text-slate-500 font-mono truncate max-w-[140px]">
                 {currentUser.email}
               </p>
             </div>
-          </div>
-        ) : (
-          <button
-            onClick={onOpenAuthModal}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>เข้าสู่ระบบ Google</span>
-          </button>
-        )}
 
-        {currentUser && (
-          <button
-            onClick={onLogout}
-            title="ออกจากระบบ"
-            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition"
-          >
-            <LogIn className="w-4 h-4 rotate-180" />
-          </button>
+            <button
+              onClick={onLogout}
+              title="ออกจากระบบ Google"
+              className="ml-2 flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl border border-rose-200 transition font-semibold"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">ออกจากระบบ</span>
+            </button>
+          </div>
         )}
       </div>
     </header>

@@ -9,7 +9,6 @@ import { InvoicePaymentView } from './components/InvoicePaymentView';
 import { MaintenanceView } from './components/MaintenanceView';
 import { DatabaseView } from './components/DatabaseView';
 import { DeploymentGuideView } from './components/DeploymentGuideView';
-import { GoogleAuthModal } from './components/GoogleAuthModal';
 import { LoginPage } from './components/LoginPage';
 
 import { Room, LeaseContract, MeterReading, Invoice, MaintenanceTicket, User } from './types';
@@ -19,7 +18,6 @@ import { AuthService } from './services/auth';
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(() => AuthService.getCurrentUser());
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Application Data States
   const [rooms, setRooms] = useState<Room[]>(() => StorageService.getRooms());
@@ -107,7 +105,6 @@ export const App: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar 
         currentUser={currentUser}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
         onDataReset={handleResetData} 
       />
@@ -188,14 +185,6 @@ export const App: React.FC = () => {
           )}
         </main>
       </div>
-
-      {/* Google OAuth Modal */}
-      <GoogleAuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        currentUser={currentUser}
-        onLoginSuccess={handleLoginSuccess}
-      />
     </div>
   );
 };

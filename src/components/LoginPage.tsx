@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Building2, Shield, Lock, CheckCircle2, AlertCircle, Database, Sparkles, UserCheck } from 'lucide-react';
-import { AuthService, GOOGLE_CLIENT_ID, ADMIN_EMAILS } from '../services/auth';
+import { Building2, Shield, Lock, AlertCircle, Database } from 'lucide-react';
+import { AuthService, GOOGLE_CLIENT_ID } from '../services/auth';
 import { User } from '../types';
 
 declare global {
@@ -42,7 +42,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               text: 'signin_with',
               shape: 'pill',
               logo_alignment: 'left',
-              width: 300
+              width: 280
             });
           }
         } catch (err: any) {
@@ -74,18 +74,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleDirectAdminLogin = async (email: string, name: string) => {
-    setIsLoading(true);
-    try {
-      const user = await AuthService.directLogin(email, name);
-      onLoginSuccess(user);
-    } catch (err: any) {
-      setErrorMsg(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col justify-center items-center p-4 selection:bg-blue-500 selection:text-white relative overflow-hidden">
       {/* Background Glow effects */}
@@ -99,20 +87,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <Building2 className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">ระบบจัดการเช่าห้องพัก</h2>
-          <p className="text-xs text-slate-500 font-medium">Smart Room Rental Management &bull; Cloudflare D1</p>
+          <p className="text-xs text-slate-500 font-medium">Smart Room Rental Management</p>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-semibold mt-1">
             <Database className="w-3.5 h-3.5 text-emerald-600" />
-            <span>ฐานข้อมูล Cloudflare D1 พร้อมใช้งาน</span>
+            <span>เชื่อมต่อ Cloudflare D1 Database</span>
           </div>
         </div>
 
         {/* Security Notice */}
         <div className="p-3.5 bg-blue-50/80 border border-blue-100 rounded-2xl text-xs text-slate-600 leading-relaxed text-left">
-          <div className="flex items-center gap-2 mb-1.5 text-blue-800 font-bold">
+          <div className="flex items-center gap-2 mb-1 text-blue-800 font-bold">
             <Shield className="w-4 h-4 text-blue-600" />
-            <span>เข้าสู่ระบบด้วย Google ก่อนเข้าใช้งาน</span>
+            <span>เข้าสู่ระบบด้วยบัญชี Google</span>
           </div>
-          ระบบบังคับยืนยันตัวตนด้วย Google OAuth 2.0 API เพื่อความปลอดภัยของข้อมูลห้องพักและสัญญาเช่า
+          กรุณากดปุ่มด้านล่างเพื่อเข้าสู่ระบบด้วย Google โดยระบบจะตรวจสอบสิทธิ์ผู้ดูแลระบบตามบัญชีที่ได้รับอนุญาต
         </div>
 
         {errorMsg && (
@@ -122,73 +110,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </div>
         )}
 
-        {/* Official Google Sign-In Button */}
-        <div className="flex flex-col items-center justify-center py-2 space-y-3">
+        {/* Official Google Sign-In Button ONLY */}
+        <div className="flex flex-col items-center justify-center py-4 space-y-3">
           <div ref={googleBtnRef} className="flex justify-center min-h-[44px]"></div>
           
           {!gsiLoaded && (
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
-              กำลังโหลดระบบ Google OAuth...
+              กำลังโหลดปุ่ม Google Sign-In...
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="flex items-center gap-2 text-xs text-blue-600 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
+              กำลังยืนยันตัวตนกับ Google...
             </div>
           )}
         </div>
 
-        {/* Admin Quick Login Options */}
-        <div className="pt-4 border-t border-slate-100 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              บัญชีผู้ดูแลระบบ (Admin Access)
-            </span>
-            <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
-              สิทธิ์ Admin
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              onClick={() => handleDirectAdminLogin('seree999@gmail.com', 'อาจารย์เสรี ชะนะ (ผู้ดูแลระบบ)')}
-              disabled={isLoading}
-              className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 transition text-left group"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">
-                  ส
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition">seree999@gmail.com</p>
-                  <p className="text-[10px] text-slate-500">อาจารย์เสรี ชะนะ &bull; ผู้ดูแลระบบ</p>
-                </div>
-              </div>
-              <UserCheck className="w-4 h-4 text-blue-600 opacity-60 group-hover:opacity-100 transition" />
-            </button>
-
-            <button
-              onClick={() => handleDirectAdminLogin('674295023@parichat.skru.ac.th', 'ผู้ดูแลระบบ (SKRU)')}
-              disabled={isLoading}
-              className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 transition text-left group"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs">
-                  SK
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-700 transition">674295023@parichat.skru.ac.th</p>
-                  <p className="text-[10px] text-slate-500">ผู้ดูแลระบบ &bull; SKRU Admin</p>
-                </div>
-              </div>
-              <UserCheck className="w-4 h-4 text-indigo-600 opacity-60 group-hover:opacity-100 transition" />
-            </button>
-          </div>
-        </div>
-
         {/* Footer info */}
-        <div className="pt-2 text-center text-[10px] text-slate-400 space-y-1">
-          <p className="flex items-center justify-center gap-1">
+        <div className="pt-2 border-t border-slate-100 text-center text-[10px] text-slate-400 space-y-1">
+          <p className="flex items-center justify-center gap-1 font-mono">
             <Lock className="w-3 h-3 text-slate-400" />
-            Client ID: {GOOGLE_CLIENT_ID.slice(0, 15)}...
+            Google OAuth 2.0 &bull; Cloudflare D1
           </p>
-          <p>Deploy บน Cloudflare Pages &bull; Cloudflare D1 Database</p>
         </div>
       </div>
     </div>
