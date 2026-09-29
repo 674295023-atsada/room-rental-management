@@ -1,3 +1,13 @@
+export type UserRole = 'ADMIN' | 'TENANT' | 'STAFF';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  role: UserRole;
+}
+
 export type RoomStatus = 'VACANT' | 'OCCUPIED' | 'MAINTENANCE';
 
 export type RoomType = 'Standard' | 'Deluxe' | 'Studio' | 'Suite';

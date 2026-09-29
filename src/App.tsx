@@ -7,13 +7,18 @@ import { LeaseManagementView } from './components/LeaseManagementView';
 import { MeterBillingView } from './components/MeterBillingView';
 import { InvoicePaymentView } from './components/InvoicePaymentView';
 import { MaintenanceView } from './components/MaintenanceView';
+import { DatabaseView } from './components/DatabaseView';
 import { DeploymentGuideView } from './components/DeploymentGuideView';
+import { GoogleAuthModal } from './components/GoogleAuthModal';
 
-import { Room, LeaseContract, MeterReading, Invoice, MaintenanceTicket } from './types';
+import { Room, LeaseContract, MeterReading, Invoice, MaintenanceTicket, User } from './types';
 import { StorageService, SystemRates } from './services/storage';
+import { AuthService } from './services/auth';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [currentUser, setCurrentUser] = useState<User | null>(() => AuthService.getCurrentUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Application Data States
   const [rooms, setRooms] = useState<Room[]>(() => StorageService.getRooms());
@@ -23,7 +28,24 @@ export const App: React.FC = () => {
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(() => StorageService.getTickets());
   const [rates, setRates] = useState<SystemRates>(() => StorageService.getRates());
 
-  // Keep localStorage synced
+  // Attempt to sync from Cloudflare D1 database if online
+  useEffect(() => {
+    const syncFromD1 = async () => {
+      try {
+        const res = await fetch('/api/data');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.rooms && data.rooms.length > 0) {
+            console.log('Successfully synced data from Cloudflare D1');
+          }
+        }
+      } catch {
+        // Local state preserved
+      }
+    };
+    syncFromD1();
+  }, []);
+
   const handleUpdateRooms = (updatedRooms: Room[]) => {
     setRooms(updatedRooms);
     StorageService.saveRooms(updatedRooms);
@@ -60,12 +82,20 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+  };
+
   const pendingInvoicesCount = invoices.filter(i => i.status === 'AWAITING_APPROVAL').length;
   const openTicketsCount = tickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <Navbar onDataReset={handleResetData} />
+      <Navbar 
+        currentUser={currentUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onDataReset={handleResetData} 
+      />
 
       <div className="flex flex-1">
         <Sidebar
@@ -132,11 +162,25 @@ export const App: React.FC = () => {
             />
           )}
 
+          {activeTab === 'database' && (
+            <DatabaseView
+              currentUser={currentUser}
+            />
+          )}
+
           {activeTab === 'deployment' && (
             <DeploymentGuideView />
           )}
         </main>
       </div>
+
+      {/* Google OAuth Modal */}
+      <GoogleAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={currentUser}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
 };

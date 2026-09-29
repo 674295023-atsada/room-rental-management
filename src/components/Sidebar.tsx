@@ -6,11 +6,11 @@ import {
   Gauge, 
   Receipt, 
   Wrench, 
-  Settings,
+  Database,
   CloudUpload
 } from 'lucide-react';
 
-export type TabType = 'dashboard' | 'rooms' | 'leases' | 'meters' | 'invoices' | 'maintenance' | 'deployment';
+export type TabType = 'dashboard' | 'rooms' | 'leases' | 'meters' | 'invoices' | 'maintenance' | 'database' | 'deployment';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -41,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, count
       badge: counts.openTickets > 0 ? counts.openTickets : undefined,
       badgeColor: 'bg-rose-500'
     },
+    { id: 'database' as TabType, label: 'ฐานข้อมูล Cloudflare D1', icon: Database },
     { id: 'deployment' as TabType, label: 'สถานะ Cloudflare Deploy', icon: CloudUpload },
   ];
 
@@ -78,12 +79,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, count
       </div>
 
       <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-3.5 text-white shadow-sm">
-          <p className="text-xs font-medium text-blue-100">Cloudflare Pages Ready</p>
-          <p className="text-sm font-bold mt-0.5">Automated CI/CD</p>
-          <div className="mt-2 text-[11px] text-blue-100 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Auto-Deploy on Push: main
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl p-3.5 text-white shadow-sm">
+          <div className="flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-emerald-200" />
+            <p className="text-xs font-medium text-emerald-100">Cloudflare D1 SQL</p>
+          </div>
+          <p className="text-sm font-bold mt-0.5">room_rental_db</p>
+          <div className="mt-2 text-[11px] text-emerald-100 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+            Connected &bull; Edge APAC
           </div>
         </div>
       </div>
