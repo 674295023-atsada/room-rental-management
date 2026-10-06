@@ -33,7 +33,7 @@ export const App: React.FC = () => {
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(() => StorageService.getTickets());
   const [rates, setRates] = useState<SystemRates>(() => StorageService.getRates());
 
-  // Attempt to sync from Cloudflare D1 database if online
+  // Two-way sync with Cloudflare D1 database
   useEffect(() => {
     if (!currentUser) return;
     const syncFromD1 = async () => {
@@ -42,11 +42,29 @@ export const App: React.FC = () => {
         if (res.ok) {
           const data = await res.json();
           if (data.rooms && data.rooms.length > 0) {
-            console.log('Successfully synced data from Cloudflare D1');
+            const mappedRooms: Room[] = data.rooms.map((r: any) => ({
+              id: r.id,
+              roomNumber: r.room_number || r.roomNumber,
+              floor: r.floor,
+              type: r.type,
+              baseRent: r.base_rent || r.baseRent,
+              status: r.status
+            }));
+            setRooms(mappedRooms);
+            StorageService.saveRooms(mappedRooms);
           }
+          if (data.invoices && data.invoices.length > 0) {
+            setInvoices(data.invoices);
+            StorageService.saveInvoices(data.invoices);
+          }
+          if (data.tickets && data.tickets.length > 0) {
+            setTickets(data.tickets);
+            StorageService.saveTickets(data.tickets);
+          }
+          console.log('✅ Connected & Synced with Cloudflare D1 Database:', data.counts);
         }
-      } catch {
-        // Local state preserved
+      } catch (err) {
+        console.warn('D1 local fallback:', err);
       }
     };
     syncFromD1();
@@ -55,6 +73,11 @@ export const App: React.FC = () => {
   const handleUpdateRooms = (updatedRooms: Room[]) => {
     setRooms(updatedRooms);
     StorageService.saveRooms(updatedRooms);
+    fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'SAVE_ROOMS', data: updatedRooms })
+    }).catch(console.warn);
   };
 
   const handleUpdateLeases = (updatedLeases: LeaseContract[]) => {
@@ -70,11 +93,26 @@ export const App: React.FC = () => {
   const handleUpdateInvoices = (updatedInvoices: Invoice[]) => {
     setInvoices(updatedInvoices);
     StorageService.saveInvoices(updatedInvoices);
+    // Sync latest changed invoice to D1
+    if (updatedInvoices.length > 0) {
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'SAVE_INVOICE', data: updatedInvoices[0] })
+      }).catch(console.warn);
+    }
   };
 
   const handleUpdateTickets = (updatedTickets: MaintenanceTicket[]) => {
     setTickets(updatedTickets);
     StorageService.saveTickets(updatedTickets);
+    if (updatedTickets.length > 0) {
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'SAVE_TICKET', data: updatedTickets[0] })
+      }).catch(console.warn);
+    }
   };
 
   const handleUpdateRates = (updatedRates: SystemRates) => {
