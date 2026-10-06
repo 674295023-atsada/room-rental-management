@@ -42,6 +42,7 @@ export interface LeaseContract {
   roomNumber: string;
   tenantId: string;
   tenantName: string;
+  tenantEmail?: string;
   tenantPhone: string;
   startDate: string;
   endDate: string;

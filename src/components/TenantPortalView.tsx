@@ -16,7 +16,8 @@ import {
   X,
   CreditCard,
   ShieldCheck,
-  Info
+  Info,
+  RefreshCw
 } from 'lucide-react';
 import { User, Room, Invoice, MaintenanceTicket, LeaseContract, TicketCategory, TicketPriority } from '../types';
 
@@ -28,6 +29,7 @@ interface TenantPortalViewProps {
   leases: LeaseContract[];
   onUpdateInvoices: (invoices: Invoice[]) => void;
   onUpdateTickets: (tickets: MaintenanceTicket[]) => void;
+  onRefresh?: () => void;
 }
 
 export const TenantPortalView: React.FC<TenantPortalViewProps> = ({
@@ -37,17 +39,18 @@ export const TenantPortalView: React.FC<TenantPortalViewProps> = ({
   tickets,
   leases,
   onUpdateInvoices,
-  onUpdateTickets
+  onUpdateTickets,
+  onRefresh
 }) => {
-  // Find lease associated with current user or fallback to room 101/102 for demo
+  // Find lease associated strictly with current user's email or name
   const userLease = leases.find(l => 
-    l.tenantName.toLowerCase().includes(currentUser.name.toLowerCase()) || 
-    (l as any).tenantEmail === currentUser.email
-  ) || leases[0]; // fallback to first lease for seamless tenant testing
+    (l.tenantEmail && l.tenantEmail.trim().toLowerCase() === currentUser.email.trim().toLowerCase()) ||
+    (currentUser.name && l.tenantName && l.tenantName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+  );
 
-  const myRoom = rooms.find(r => r.id === userLease?.roomId) || rooms[0];
-  const myInvoices = invoices.filter(inv => inv.roomId === myRoom.id);
-  const myTickets = tickets.filter(t => t.roomId === myRoom.id);
+  const myRoom = userLease ? rooms.find(r => r.id === userLease.roomId) : null;
+  const myInvoices = myRoom ? invoices.filter(inv => inv.roomId === myRoom.id) : [];
+  const myTickets = myRoom ? tickets.filter(t => t.roomId === myRoom.id) : [];
 
   // States
   const [activeSubTab, setActiveSubTab] = useState<'overview' | 'invoices' | 'maintenance' | 'rules'>('overview');
@@ -86,7 +89,7 @@ export const TenantPortalView: React.FC<TenantPortalViewProps> = ({
 
   const handleCreateTicket = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticketTitle) return;
+    if (!ticketTitle || !myRoom) return;
 
     const newTicket: MaintenanceTicket = {
       id: `t-tenant-${Date.now().toString().slice(-4)}`,
@@ -108,6 +111,57 @@ export const TenantPortalView: React.FC<TenantPortalViewProps> = ({
     setTicketDescription('');
     alert('ส่งคำขอแจ้งซ่อมเรียบร้อยแล้ว ช่างประจำอาคารจะดำเนินการตรวจสอบครับ');
   };
+
+  // If tenant is not assigned to a room yet in Cloudflare D1
+  if (!userLease || !myRoom) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 pt-6">
+        <div className="bg-white rounded-3xl p-8 border border-slate-200/80 shadow-sm text-center space-y-5">
+          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <DoorClosed className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-xs font-semibold">
+              ⏳ รอการจัดสรรห้องพัก (Pending Room Assignment)
+            </span>
+            <h2 className="text-2xl font-bold text-slate-800">
+              ยินดีต้อนรับคุณ {currentUser.name}
+            </h2>
+            <p className="text-sm text-slate-500 font-mono">
+              อีเมลบัญชี Google: {currentUser.email}
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 text-left space-y-2">
+            <div className="flex items-center gap-2 text-emerald-700 font-bold">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>บัญชีของคุณได้ลงทะเบียนในฐานข้อมูล Cloudflare D1 เรียบร้อยแล้ว</span>
+            </div>
+            <p className="text-slate-500 leading-relaxed">
+              ขณะนี้บัญชีอีเมลของคุณยังไม่ได้ผูกกับสัญญาเช่าห้องพักในหอพัก กรุณาแจ้งผู้ดูแลระบบให้ทำการเพิ่มสัญญาเช่าและระบุอีเมล <span className="font-bold text-slate-800">{currentUser.email}</span> ในระบบ
+            </p>
+          </div>
+
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm inline-flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>ซิงค์ข้อมูลล่าสุดจาก Cloudflare D1</span>
+            </button>
+          )}
+
+          <div className="pt-4 border-t border-slate-100 text-xs text-slate-500 space-y-1">
+            <p className="font-semibold text-slate-700">ติดต่อผู้ดูแลหอพัก:</p>
+            <p>อาจารย์เสรี ชะนะ (ผู้ดูแลระบบ) &bull; โทร 02-123-4567, 081-999-8888</p>
+            <p>อีเมล: seree999@gmail.com หรือ 674295023@parichat.skru.ac.th</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
-import { Plus, FileText, User, Calendar, Phone, DollarSign, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Plus, FileText, User as UserIcon, Calendar, Phone, DollarSign, CheckCircle2, AlertTriangle, X, Mail } from 'lucide-react';
 import { LeaseContract, Room } from '../types';
 
 interface LeaseManagementViewProps {
   leases: LeaseContract[];
   rooms: Room[];
-  onUpdateLeases: (leases: LeaseContract[]) => void;
+  registeredUsers?: any[];
+  onUpdateLeases: (leases: LeaseContract[], actionMeta?: { action: 'SAVE_LEASE' | 'TERMINATE_LEASE'; data: any }) => void;
   onUpdateRooms: (rooms: Room[]) => void;
 }
 
 export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
   leases,
   rooms,
+  registeredUsers = [],
   onUpdateLeases,
   onUpdateRooms
 }) => {
   const [isNewLeaseModalOpen, setIsNewLeaseModalOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [tenantName, setTenantName] = useState('');
+  const [tenantEmail, setTenantEmail] = useState('');
   const [tenantPhone, setTenantPhone] = useState('');
   const [startDate, setStartDate] = useState('2026-10-01');
   const [endDate, setEndDate] = useState('2027-09-30');
@@ -32,6 +35,14 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
     if (room) {
       setMonthlyRent(room.baseRent);
       setSecurityDeposit(room.baseRent * 2);
+    }
+  };
+
+  const handleSelectRegisteredUser = (userEmail: string) => {
+    setTenantEmail(userEmail);
+    const u = registeredUsers.find(user => user.email === userEmail);
+    if (u && u.name) {
+      setTenantName(u.name);
     }
   };
 
@@ -51,6 +62,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
       roomNumber: room.roomNumber,
       tenantId,
       tenantName,
+      tenantEmail: tenantEmail.trim().toLowerCase() || undefined,
       tenantPhone,
       startDate,
       endDate,
@@ -76,18 +88,19 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
       return r;
     });
 
-    onUpdateLeases([newLease, ...leases]);
+    onUpdateLeases([newLease, ...leases], { action: 'SAVE_LEASE', data: newLease });
     onUpdateRooms(updatedRooms);
     setIsNewLeaseModalOpen(false);
 
     // Reset form
     setSelectedRoomId('');
     setTenantName('');
+    setTenantEmail('');
     setTenantPhone('');
   };
 
   const handleTerminateLease = (leaseId: string, roomId: string) => {
-    if (!confirm('ยืนยันการสิ้นสุดสัญญาและคืนห้องพักใช่หรือไม่?')) return;
+    if (!confirm('ยืนยันการสิ้นสุดสัญญาและคืนห้องพักใช่หรือไม่? ข้อมูลจะถูกอัปเดตไปยัง Cloudflare D1 โดยตรง')) return;
 
     const updatedLeases = leases.map(l => {
       if (l.id === leaseId) {
@@ -107,7 +120,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
       return r;
     });
 
-    onUpdateLeases(updatedLeases);
+    onUpdateLeases(updatedLeases, { action: 'TERMINATE_LEASE', data: { leaseId, roomId } });
     onUpdateRooms(updatedRooms);
   };
 
@@ -116,7 +129,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">สัญญาเช่าและผู้เช่า (Lease Contracts)</h2>
+          <h2 className="text-xl font-bold text-slate-800">สัญญาเช่าและผู้เช่า (Cloudflare D1 Leases)</h2>
           <p className="text-xs text-slate-500 mt-1">
             มีสัญญาที่กำลังใช้งาน (Active) {leases.filter(l => l.status === 'ACTIVE').length} ฉบับ &bull; มีห้องว่างพร้อมทำสัญญา {vacantRooms.length} ห้อง
           </p>
@@ -133,7 +146,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-sm self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>ทำสัญญาเช่าใหม่</span>
+          <span>ทำสัญญาเช่าใหม่ (D1)</span>
         </button>
       </div>
 
@@ -147,7 +160,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
                 <th className="px-5 py-3.5">ข้อมูลผู้เช่า</th>
                 <th className="px-5 py-3.5">ระยะเวลาสัญญา</th>
                 <th className="px-5 py-3.5">ค่าเช่า / เงินประกัน</th>
-                <th className="px-5 py-3.5">สถานะ</th>
+                <th className="px-5 py-3.5">สถานะ D1</th>
                 <th className="px-5 py-3.5 text-right">การจัดการ</th>
               </tr>
             </thead>
@@ -165,6 +178,11 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
                       </div>
                       <div>
                         <p className="font-semibold text-slate-800">{lease.tenantName}</p>
+                        {lease.tenantEmail && (
+                          <p className="text-[11px] text-blue-600 flex items-center gap-1 font-mono">
+                            <Mail className="w-3 h-3 text-blue-400" /> {lease.tenantEmail}
+                          </p>
+                        )}
                         <p className="text-xs text-slate-500 flex items-center gap-1">
                           <Phone className="w-3 h-3 text-slate-400" /> {lease.tenantPhone}
                         </p>
@@ -187,7 +205,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
                         ? 'bg-emerald-100 text-emerald-700' 
                         : 'bg-slate-100 text-slate-600'
                     }`}>
-                      {lease.status === 'ACTIVE' ? 'กำลังเช่าอยู่' : 'สิ้นสุดสัญญาแล้ว'}
+                      {lease.status === 'ACTIVE' ? 'กำลังเช่าอยู่ (Active)' : 'สิ้นสุดสัญญาแล้ว'}
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right">
@@ -212,7 +230,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-100">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800 text-base">ทำสัญญาเช่าห้องพักใหม่</h3>
+              <h3 className="font-bold text-slate-800 text-base">ทำสัญญาเช่าห้องพักใหม่ (Cloudflare D1)</h3>
               <button onClick={() => setIsNewLeaseModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
@@ -235,6 +253,26 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
                 </select>
               </div>
 
+              {registeredUsers.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    ดึงข้อมูลจากผู้ใช้ Google ที่ล็อกอินในระบบ (Cloudflare D1 Users)
+                  </label>
+                  <select
+                    onChange={(e) => handleSelectRegisteredUser(e.target.value)}
+                    defaultValue=""
+                    className="w-full text-xs border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-slate-700 focus:outline-none"
+                  >
+                    <option value="">-- เลือกผู้ใช้ Google หรือกรอกเองด้านล่าง --</option>
+                    {registeredUsers.filter(u => u.role !== 'ADMIN').map((u: any) => (
+                      <option key={u.id} value={u.email}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล ผู้เช่า</label>
@@ -248,16 +286,27 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">เบอร์โทรศัพท์</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">อีเมลผู้เช่า (สำหรับผูกบัญชี Google)</label>
                   <input
-                    type="text"
-                    required
-                    placeholder="เช่น 081-999-8888"
-                    value={tenantPhone}
-                    onChange={(e) => setTenantPhone(e.target.value)}
+                    type="email"
+                    placeholder="user@gmail.com"
+                    value={tenantEmail}
+                    onChange={(e) => setTenantEmail(e.target.value)}
                     className="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">เบอร์โทรศัพท์ผู้เช่า</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="เช่น 081-999-8888"
+                  value={tenantPhone}
+                  onChange={(e) => setTenantPhone(e.target.value)}
+                  className="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -320,7 +369,7 @@ export const LeaseManagementView: React.FC<LeaseManagementViewProps> = ({
                   type="submit"
                   className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm"
                 >
-                  บันทึกสัญญาและเข้าพัก
+                  บันทึกลง Cloudflare D1
                 </button>
               </div>
             </form>

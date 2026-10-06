@@ -32,42 +32,51 @@ export const App: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>(() => StorageService.getInvoices());
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(() => StorageService.getTickets());
   const [rates, setRates] = useState<SystemRates>(() => StorageService.getRates());
+  const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
 
   // Two-way sync with Cloudflare D1 database
+  const refreshDataFromD1 = async () => {
+    try {
+      const res = await fetch('/api/data');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.rooms && data.rooms.length > 0) {
+          setRooms(data.rooms);
+          StorageService.saveRooms(data.rooms);
+        }
+        if (data.leases && data.leases.length > 0) {
+          setLeases(data.leases);
+          StorageService.saveLeases(data.leases);
+        }
+        if (data.meters && data.meters.length > 0) {
+          setMeters(data.meters);
+          StorageService.saveMeters(data.meters);
+        }
+        if (data.invoices && data.invoices.length > 0) {
+          setInvoices(data.invoices);
+          StorageService.saveInvoices(data.invoices);
+        }
+        if (data.tickets && data.tickets.length > 0) {
+          setTickets(data.tickets);
+          StorageService.saveTickets(data.tickets);
+        }
+        if (data.rates) {
+          setRates(data.rates);
+          StorageService.saveRates(data.rates);
+        }
+        if (data.users && data.users.length > 0) {
+          setRegisteredUsers(data.users);
+        }
+        console.log('✅ Connected & Synced with Cloudflare D1 Database:', data.counts);
+      }
+    } catch (err) {
+      console.warn('D1 local fallback:', err);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser) return;
-    const syncFromD1 = async () => {
-      try {
-        const res = await fetch('/api/data');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.rooms && data.rooms.length > 0) {
-            const mappedRooms: Room[] = data.rooms.map((r: any) => ({
-              id: r.id,
-              roomNumber: r.room_number || r.roomNumber,
-              floor: r.floor,
-              type: r.type,
-              baseRent: r.base_rent || r.baseRent,
-              status: r.status
-            }));
-            setRooms(mappedRooms);
-            StorageService.saveRooms(mappedRooms);
-          }
-          if (data.invoices && data.invoices.length > 0) {
-            setInvoices(data.invoices);
-            StorageService.saveInvoices(data.invoices);
-          }
-          if (data.tickets && data.tickets.length > 0) {
-            setTickets(data.tickets);
-            StorageService.saveTickets(data.tickets);
-          }
-          console.log('✅ Connected & Synced with Cloudflare D1 Database:', data.counts);
-        }
-      } catch (err) {
-        console.warn('D1 local fallback:', err);
-      }
-    };
-    syncFromD1();
+    refreshDataFromD1();
   }, [currentUser]);
 
   const handleUpdateRooms = (updatedRooms: Room[]) => {
@@ -80,27 +89,49 @@ export const App: React.FC = () => {
     }).catch(console.warn);
   };
 
-  const handleUpdateLeases = (updatedLeases: LeaseContract[]) => {
+  const handleUpdateLeases = (
+    updatedLeases: LeaseContract[], 
+    actionMeta?: { action: 'SAVE_LEASE' | 'TERMINATE_LEASE'; data: any }
+  ) => {
     setLeases(updatedLeases);
     StorageService.saveLeases(updatedLeases);
+    if (actionMeta) {
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(actionMeta)
+      })
+      .then(() => refreshDataFromD1())
+      .catch(console.warn);
+    } else if (updatedLeases.length > 0) {
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'SAVE_LEASE', data: updatedLeases[0] })
+      })
+      .then(() => refreshDataFromD1())
+      .catch(console.warn);
+    }
   };
 
   const handleUpdateMeters = (updatedMeters: MeterReading[]) => {
     setMeters(updatedMeters);
     StorageService.saveMeters(updatedMeters);
+    fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'SAVE_METERS', data: updatedMeters })
+    }).catch(console.warn);
   };
 
   const handleUpdateInvoices = (updatedInvoices: Invoice[]) => {
     setInvoices(updatedInvoices);
     StorageService.saveInvoices(updatedInvoices);
-    // Sync latest changed invoice to D1
-    if (updatedInvoices.length > 0) {
-      fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'SAVE_INVOICE', data: updatedInvoices[0] })
-      }).catch(console.warn);
-    }
+    fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'SAVE_INVOICES', data: updatedInvoices })
+    }).catch(console.warn);
   };
 
   const handleUpdateTickets = (updatedTickets: MaintenanceTicket[]) => {
@@ -118,6 +149,11 @@ export const App: React.FC = () => {
   const handleUpdateRates = (updatedRates: SystemRates) => {
     setRates(updatedRates);
     StorageService.saveRates(updatedRates);
+    fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'SAVE_RATES', data: updatedRates })
+    }).catch(console.warn);
   };
 
   const handleResetData = () => {
@@ -176,6 +212,7 @@ export const App: React.FC = () => {
               leases={leases}
               onUpdateInvoices={handleUpdateInvoices}
               onUpdateTickets={handleUpdateTickets}
+              onRefresh={refreshDataFromD1}
             />
           ) : (
             /* ADMIN VIEWS */
@@ -201,6 +238,7 @@ export const App: React.FC = () => {
                 <LeaseManagementView
                   leases={leases}
                   rooms={rooms}
+                  registeredUsers={registeredUsers}
                   onUpdateLeases={handleUpdateLeases}
                   onUpdateRooms={handleUpdateRooms}
                 />
