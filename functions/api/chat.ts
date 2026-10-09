@@ -1,12 +1,39 @@
 interface Env {
   DB: D1Database;
   AI?: any;
+  GEMINI_API_KEY?: string;
 }
+
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  try {
+    // Check if Gemini API key exists
+    let geminiConfigured = false;
+    if (context.env.GEMINI_API_KEY) {
+      geminiConfigured = true;
+    } else {
+      const setting = await context.env.DB.prepare("SELECT value FROM system_settings WHERE key = 'geminiApiKey'").first();
+      if (setting && setting.value) {
+        geminiConfigured = true;
+      }
+    }
+
+    return new Response(JSON.stringify({
+      geminiConfigured,
+      model: 'gemini-1.5-flash'
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+};
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const body = await context.request.json() as {
-      message: string;
+      action?: string;
+      apiKey?: string;
+      message?: string;
       history?: Array<{ role: 'user' | 'assistant'; content: string }>;
       user?: {
         email?: string;
@@ -14,6 +41,23 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         role?: string;
       };
     };
+
+    // Action: Save Gemini API Key to D1
+    if (body.action === 'SET_GEMINI_KEY' && body.apiKey !== undefined) {
+      const trimmedKey = body.apiKey.trim();
+      await context.env.DB.prepare(`
+        INSERT INTO system_settings (key, value, updated_at)
+        VALUES ('geminiApiKey', ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+      `).bind(trimmedKey).run();
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'บันทึก Google Gemini API Key ลงในฐานข้อมูล Cloudflare D1 เรียบร้อยแล้ว'
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     const userMsg = (body.message || '').trim();
     if (!userMsg) {
@@ -38,6 +82,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const promptPayPhone = '081-999-8888';
     const officeHours = 'ทุกวัน 08:30 - 18:00 น.';
     const officePhone = '02-123-4567, 081-999-8888';
+
+    // Get Gemini Key from body, env, or D1
+    const geminiKey = body.apiKey || context.env.GEMINI_API_KEY || settings.geminiApiKey || '';
 
     // 2. Fetch User & Room Data from D1
     let userLease: any = null;
@@ -102,12 +149,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       };
     }
 
-    // 3. Check if Cloudflare Workers AI is available
-    let aiReply = '';
-    const systemPrompt = `คุณคือ "น้องสบายใจ" ผู้ช่วย AI อัจฉริยะประจำหอพักบ้านสบายใจ (Baan Sabaijai)
-ให้ตอบคำถามอย่างสุภาพ ไพเราะ เป็นมิตร กระชับ ใช้ภาษาไทยและมีอิโมจิประกอบอย่างเหมาะสม
+    // 3. Construct System Prompt with live data
+    const systemPrompt = `คุณคือ "น้องสบายใจ" ผู้ช่วย AI อัจฉริยะประจำหอพักบ้านสบายใจ (Baan Sabaijai) ขับเคลื่อนด้วยโมเดล Google Gemini
+ตอบคำถามอย่างสุภาพ ไพเราะ เป็นมิตร กระชับ ใช้ภาษาไทยและมีอิโมจิประกอบอย่างเหมาะสม
 
-ข้อมูลสำคัญของหอพัก:
+ข้อมูลสำคัญของหอพัก (จากฐานข้อมูลจริง Cloudflare D1):
 - อัตราค่าน้ำประปา: ${waterRate} บาท/หน่วย
 - อัตราค่าไฟฟ้า: ${electricRate} บาท/หน่วย
 - ค่าส่วนกลางและขยะ: ${commonFee} บาท/ห้อง/เดือน
@@ -124,7 +170,66 @@ ${userTickets.length > 0 ? `- งานแจ้งซ่อมล่าสุ�
 ${dormSummary ? `- ข้อมูลสรุปภาพรวมหอพัก: ห้องว่าง ${dormSummary.vacant} ห้อง, ห้องมีผู้เช่า ${dormSummary.occupied} ห้อง, ห้องปรับปรุง ${dormSummary.maintenance} ห้อง, บิลค้างชำระ ${dormSummary.pendingInvoicesCount} ใบ (รวม ฿${Number(dormSummary.pendingInvoicesTotal).toLocaleString()}), งานแจ้งซ่อมค้าง ${dormSummary.openTicketsCount} งาน` : ''}
 `;
 
-    if (context.env.AI) {
+    let aiReply = '';
+    let usedEngine = 'Intelligent Context Engine';
+
+    // 4. CALL REAL GOOGLE GEMINI API IF KEY IS PROVIDED
+    if (geminiKey) {
+      try {
+        const geminiContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+
+        // Add history
+        if (Array.isArray(body.history)) {
+          for (const h of body.history.slice(-6)) {
+            geminiContents.push({
+              role: h.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: h.content }]
+            });
+          }
+        }
+
+        // Add current user message
+        geminiContents.push({
+          role: 'user',
+          parts: [{ text: userMsg }]
+        });
+
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const geminiReqBody = {
+          system_instruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 800
+          }
+        };
+
+        const geminiRes = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiReqBody)
+        });
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const candidateText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText) {
+            aiReply = candidateText;
+            usedEngine = 'Google Gemini 1.5 Flash (Live)';
+          }
+        } else {
+          const errData = await geminiRes.text();
+          console.error('Google Gemini API Error:', errData);
+        }
+      } catch (geminiErr) {
+        console.warn('Gemini request failed, falling back:', geminiErr);
+      }
+    }
+
+    // 5. Cloudflare Workers AI Fallback (if no Gemini or Gemini failed)
+    if (!aiReply && context.env.AI) {
       try {
         const messages: Array<{ role: string; content: string }> = [
           { role: 'system', content: systemPrompt }
@@ -146,13 +251,14 @@ ${dormSummary ? `- ข้อมูลสรุปภาพรวมหอพั�
 
         if (aiResponse && aiResponse.response) {
           aiReply = aiResponse.response;
+          usedEngine = 'Cloudflare Workers AI (Llama 3.1)';
         }
       } catch (err) {
-        console.warn('Cloudflare Workers AI execution fallback:', err);
+        console.warn('Workers AI fallback error:', err);
       }
     }
 
-    // 4. If AI model response was empty or Workers AI unavailable, use smart contextual engine
+    // 6. Intelligent Fallback (if no API keys configured)
     if (!aiReply) {
       const q = userMsg.toLowerCase();
 
@@ -220,6 +326,7 @@ ${dormSummary ? `- ข้อมูลสรุปภาพรวมหอพั�
           `• 📲 **ข้อมูลเลขที่บัญชีโอนเงิน / พร้อมเพย์**\n` +
           `• 🔧 **แนะนำขั้นตอนการแจ้งซ่อมห้องพัก**\n` +
           `• 📜 **กฎระเบียบการพักอาศัยและเวลาทำการ**\n\n` +
+          (geminiKey ? '' : '💡 *(ใส่ Gemini API Key ในปุ่มตั้งค่า ⚙️ เพื่อเปิดใช้พลัง Google Gemini AI แบบเต็มรูปแบบได้เลยครับ)*\n\n') +
           `พิมพ์สอบถามเรื่องที่ต้องการทราบได้เลยนะครับ ยินดีช่วยเหลือครับ! 😊`;
       }
     }
@@ -227,6 +334,7 @@ ${dormSummary ? `- ข้อมูลสรุปภาพรวมหอพั�
     return new Response(JSON.stringify({
       success: true,
       reply: aiReply,
+      engine: usedEngine,
       timestamp: new Date().toISOString()
     }), {
       headers: {
