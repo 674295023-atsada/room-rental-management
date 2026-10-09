@@ -194,34 +194,37 @@ ${dormSummary ? `- ข้อมูลสรุปภาพรวมหอพั�
           parts: [{ text: userMsg }]
         });
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-        const geminiReqBody = {
-          system_instruction: {
-            parts: [{ text: systemPrompt }]
-          },
-          contents: geminiContents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 800
-          }
-        };
+        const candidateModels = ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-flash'];
+        for (const model of candidateModels) {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+          const geminiReqBody = {
+            system_instruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            contents: geminiContents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800
+            }
+          };
 
-        const geminiRes = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(geminiReqBody)
-        });
+          const geminiRes = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(geminiReqBody)
+          });
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const candidateText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidateText) {
-            aiReply = candidateText;
-            usedEngine = 'Google Gemini 1.5 Flash (Live)';
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            const candidateText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (candidateText) {
+              aiReply = candidateText;
+              usedEngine = `Google Gemini (${model})`;
+              break;
+            }
+          } else {
+            console.warn(`Model ${model} failed, trying next...`);
           }
-        } else {
-          const errData = await geminiRes.text();
-          console.error('Google Gemini API Error:', errData);
         }
       } catch (geminiErr) {
         console.warn('Gemini request failed, falling back:', geminiErr);
