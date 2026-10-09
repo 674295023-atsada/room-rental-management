@@ -11,6 +11,7 @@ import { DatabaseView } from './components/DatabaseView';
 import { DeploymentGuideView } from './components/DeploymentGuideView';
 import { LoginPage } from './components/LoginPage';
 import { TenantPortalView } from './components/TenantPortalView';
+import { ChatbotWidget } from './components/ChatbotWidget';
 
 import { Room, LeaseContract, MeterReading, Invoice, MaintenanceTicket, User } from './types';
 import { StorageService, SystemRates } from './services/storage';
@@ -285,6 +286,9 @@ export const App: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* 24/7 AI Chatbot Assistant */}
+      <ChatbotWidget currentUser={currentUser} />
     </div>
   );
 };
