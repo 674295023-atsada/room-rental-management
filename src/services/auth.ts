@@ -1,4 +1,5 @@
 import { User } from '../types';
+import { apiUrl } from './api';
 
 const AUTH_STORAGE_KEY = 'rr_auth_user_session';
 
@@ -79,7 +80,7 @@ export const AuthService = {
 
     // Also sync to Cloudflare D1 via Pages Function
     try {
-      await fetch('/api/auth/google', {
+      await fetch(apiUrl('/api/auth/google'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential })
@@ -106,7 +107,7 @@ export const AuthService = {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 
     try {
-      await fetch('/api/auth/google', {
+      await fetch(apiUrl('/api/auth/google'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name: user.name, picture: user.avatarUrl })

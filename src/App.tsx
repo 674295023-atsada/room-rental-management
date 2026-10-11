@@ -16,6 +16,7 @@ import { ChatbotWidget } from './components/ChatbotWidget';
 import { Room, LeaseContract, MeterReading, Invoice, MaintenanceTicket, User } from './types';
 import { StorageService, SystemRates } from './services/storage';
 import { AuthService } from './services/auth';
+import { apiUrl } from './services/api';
 
 export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => AuthService.getCurrentUser());
@@ -38,7 +39,7 @@ export const App: React.FC = () => {
   // Two-way sync with Cloudflare D1 database
   const refreshDataFromD1 = async () => {
     try {
-      const res = await fetch('/api/data');
+      const res = await fetch(apiUrl('/api/data'));
       if (res.ok) {
         const data = await res.json();
         if (data.rooms && data.rooms.length > 0) {
@@ -83,7 +84,7 @@ export const App: React.FC = () => {
   const handleUpdateRooms = (updatedRooms: Room[]) => {
     setRooms(updatedRooms);
     StorageService.saveRooms(updatedRooms);
-    fetch('/api/data', {
+    fetch(apiUrl('/api/data'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'SAVE_ROOMS', data: updatedRooms })
@@ -97,7 +98,7 @@ export const App: React.FC = () => {
     setLeases(updatedLeases);
     StorageService.saveLeases(updatedLeases);
     if (actionMeta) {
-      fetch('/api/data', {
+      fetch(apiUrl('/api/data'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(actionMeta)
@@ -105,7 +106,7 @@ export const App: React.FC = () => {
       .then(() => refreshDataFromD1())
       .catch(console.warn);
     } else if (updatedLeases.length > 0) {
-      fetch('/api/data', {
+      fetch(apiUrl('/api/data'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'SAVE_LEASE', data: updatedLeases[0] })
@@ -118,7 +119,7 @@ export const App: React.FC = () => {
   const handleUpdateMeters = (updatedMeters: MeterReading[]) => {
     setMeters(updatedMeters);
     StorageService.saveMeters(updatedMeters);
-    fetch('/api/data', {
+    fetch(apiUrl('/api/data'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'SAVE_METERS', data: updatedMeters })
@@ -128,7 +129,7 @@ export const App: React.FC = () => {
   const handleUpdateInvoices = (updatedInvoices: Invoice[]) => {
     setInvoices(updatedInvoices);
     StorageService.saveInvoices(updatedInvoices);
-    fetch('/api/data', {
+    fetch(apiUrl('/api/data'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'SAVE_INVOICES', data: updatedInvoices })
@@ -139,7 +140,7 @@ export const App: React.FC = () => {
     setTickets(updatedTickets);
     StorageService.saveTickets(updatedTickets);
     if (updatedTickets.length > 0) {
-      fetch('/api/data', {
+      fetch(apiUrl('/api/data'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'SAVE_TICKET', data: updatedTickets[0] })
@@ -150,7 +151,7 @@ export const App: React.FC = () => {
   const handleUpdateRates = (updatedRates: SystemRates) => {
     setRates(updatedRates);
     StorageService.saveRates(updatedRates);
-    fetch('/api/data', {
+    fetch(apiUrl('/api/data'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'SAVE_RATES', data: updatedRates })

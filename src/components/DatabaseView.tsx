@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Database, CheckCircle2, RefreshCw, Shield, Table, Key, Lock, Globe, Server, Terminal, Zap } from 'lucide-react';
 import { User } from '../types';
+import { apiUrl } from '../services/api';
 
 interface DatabaseViewProps {
   currentUser: User | null;
@@ -19,7 +20,7 @@ export const DatabaseView: React.FC<DatabaseViewProps> = ({ currentUser }) => {
   const checkLiveD1 = async () => {
     setD1Status('checking');
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch(apiUrl('/api/health'));
       if (res.ok) {
         const data = await res.json();
         setD1Status('connected');

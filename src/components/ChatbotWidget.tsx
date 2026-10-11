@@ -16,6 +16,7 @@ import {
   Zap
 } from 'lucide-react';
 import { User } from '../types';
+import { apiUrl } from '../services/api';
 
 interface ChatMessage {
   id: string;
@@ -47,7 +48,7 @@ export const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ currentUser }) => 
 
   // Check if Gemini is configured on mount
   useEffect(() => {
-    fetch('/api/chat')
+    fetch(apiUrl('/api/chat'))
       .then(res => res.json())
       .then(data => {
         if (data.geminiConfigured) {
@@ -119,7 +120,7 @@ export const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ currentUser }) => 
         content: m.content
       }));
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -168,7 +169,7 @@ export const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ currentUser }) => 
 
     setIsSavingKey(true);
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
